@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d1117" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="跑迹" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>跑迹 · 跑步记录</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1f2630;
+    --line: #2d333b;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #34d399;
+    --accent-2: #22d3ee;
+    --danger: #f85149;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  #app { max-width: 480px; margin: 0 auto; min-height: 100%; position: relative; }
+  section { display: none; padding: 20px 18px calc(24px + env(safe-area-inset-bottom)); }
+  section.active { display: block; animation: fade .18s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: .5px; }
+  .logo em { color: var(--accent); font-style: normal; }
+  .btn {
+    border: none; border-radius: 14px; cursor: pointer; font-size: 15px; font-weight: 600;
+    padding: 12px 16px; color: var(--text); background: var(--surface-2);
+    transition: transform .05s ease, opacity .15s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost { background: transparent; color: var(--muted); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #05201a; font-weight: 800; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: var(--surface-2); padding: 6px; border-radius: 14px; }
+  .seg button { border: none; background: transparent; color: var(--muted); font-size: 15px; font-weight: 700; padding: 12px; border-radius: 10px; cursor: pointer; }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+  .field { margin-top: 16px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  input[type=number] {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 12px; padding: 12px; font-size: 16px; outline: none;
+  }
+  input[type=number]:focus { border-color: var(--accent); }
+
+  .toggle { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+  .toggle .txt { font-size: 14px; }
+  .toggle .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .switch { position: relative; width: 52px; height: 30px; flex-shrink: 0; }
+  .switch input { display: none; }
+  .slider { position: absolute; inset: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 30px; transition: .2s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(22px); background: #05201a; }
+
+  .big-start { margin-top: 20px; width: 100%; font-size: 18px; padding: 18px; }
+
+  /* running screen */
+  #screen-running { padding: 0; }
+  .run-hero { background: linear-gradient(180deg, #0b2b22, var(--bg)); padding: 40px 18px 20px; text-align: center; }
+  .run-status { font-size: 13px; color: var(--accent); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .run-clock { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 10px 0 4px; letter-spacing: 1px; }
+  .run-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 18px; margin-top: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 12px; text-align: center; }
+  .stat .v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .run-controls { display: flex; gap: 12px; padding: 20px 18px; }
+  .run-controls .btn { flex: 1; font-size: 17px; padding: 16px; }
+  .btn.stop { background: var(--danger); color: #fff; }
+  .hint { text-align: center; font-size: 12px; color: var(--muted); padding: 0 18px 12px; }
+
+  /* history */
+  .run-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .run-item:last-child { border-bottom: none; }
+  .run-item .icon { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .run-item .info { flex: 1; min-width: 0; }
+  .run-item .info .date { font-size: 13px; color: var(--muted); }
+  .run-item .info .nums { font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .run-item .info .nums span { color: var(--muted); font-weight: 500; font-size: 13px; }
+  .run-item .dist { font-size: 22px; font-weight: 800; flex-shrink: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 0; }
+  .empty .big { font-size: 44px; margin-bottom: 12px; }
+
+  /* detail */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .detail-grid .stat { background: var(--surface); }
+  .detail-meta { margin-top: 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .back { cursor: pointer; color: var(--muted); font-size: 15px; font-weight: 600; }
+  .back:active { color: var(--text); }
+  .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); background: var(--surface-2); border: 1px solid var(--line); color: var(--text); padding: 10px 18px; border-radius: 30px; font-size: 14px; opacity: 0; pointer-events: none; transition: .25s; z-index: 50; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 首页 -->
+  <section id="screen-home" class="active">
+    <div class="topbar">
+      <div class="logo">跑迹<em>·</em>跑步记录</div>
+      <button class="btn ghost" onclick="show('history')">历史记录</button>
+    </div>
+
+    <div class="card">
+      <div class="seg" id="modeSeg">
+        <button class="on" data-mode="gps" onclick="setMode('gps')">户外 GPS</button>
+        <button data-mode="indoor" onclick="setMode('indoor')">室内 / 跑步机</button>
+      </div>
+
+      <!-- 户外设置 -->
+      <div id="gpsOpts">
+        <div class="field">
+          <label>体重（用于估算热量）</label>
+          <input type="number" id="weight" value="60" min="30" max="200" step="0.5" /> <span style="color:var(--muted);font-size:13px;">kg</span>
+        </div>
+        <button class="btn primary big-start" onclick="startRun()">开始跑步</button>
+      </div>
+
+      <!-- 室内设置 -->
+      <div id="indoorOpts" style="display:none;">
+        <div class="field">
+          <label>距离（公里）</label>
+          <input type="number" id="iDist" value="3" min="0.1" step="0.01" />
+        </div>
+        <div class="field">
+          <label>时长（分钟）</label>
+          <input type="number" id="iMin" value="25" min="1" step="0.5" />
+        </div>
+        <div class="field">
+          <label>体重（kg）</label>
+          <input type="number" id="iWeight" value="60" min="30" max="200" step="0.5" />
+        </div>
+        <button class="btn primary big-start" onclick="saveIndoor()">保存记录</button>
+      </div>
+    </div>
+
+    <div class="card" style="color:var(--muted);font-size:13px;line-height:1.7;">
+      <strong style="color:var(--text);">使用说明</strong><br/>
+      · 户外模式需要授予定位权限，仅用于实时测距与配速<br/>
+      · 不保存任何路线轨迹，只记录时间 / 距离 / 配速 / 热量<br/>
+      · 数据只保存在本机浏览器，不会上传到任何服务器
+    </div>
+  </section>
+
+  <!-- 跑步中 -->
+  <section id="screen-running">
+    <div class="run-hero">
+      <div class="run-status" id="runStatus">跑步中</div>
+      <div class="run-clock" id="runClock">00:00</div>
+      <div style="color:var(--muted);font-size:13px;" id="runPace">配速 --</div>
+    </div>
+    <div class="run-stats">
+      <div class="stat"><div class="v" id="rDist">0.00</div><div class="k">距离 (km)</div></div>
+      <div class="stat"><div class="v" id="rAvg">--</div><div class="k">平均配速</div></div>
+      <div class="stat"><div class="v" id="rCur">--</div><div class="k">当前配速</div></div>
+      <div class="stat"><div class="v" id="rCal">0</div><div class="k">热量 (kcal)</div></div>
+    </div>
+    <div class="run-controls">
+      <button class="btn" id="pauseBtn" onclick="pauseResume()">暂停</button>
+      <button class="btn stop" onclick="stopRun()">结束</button>
+    </div>
+    <div class="hint" id="runHint">请保持屏幕亮起，正常跑步即可</div>
+  </section>
+
+  <!-- 历史 -->
+  <section id="screen-history">
+    <div class="topbar">
+      <button class="back" onclick="show('home')">‹ 返回</button>
+      <div class="logo">历史记录</div>
+      <div style="width:40px;"></div>
+    </div>
+    <div id="historyList"></div>
+  </section>
+
+  <!-- 详情 -->
+  <section id="screen-detail">
+    <div class="topbar">
+      <button class="back" onclick="show('history')">‹ 返回</button>
+      <div class="logo">跑步详情</div>
+      <div style="width:40px;"></div>
+    </div>
+    <div id="detailBody"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const LS_KEY = 'runlog_runs_v1';
+let state = {
+  mode: 'gps',
+  points: [], recent: [], totalDist: 0,
+  segmentStart: 0, activeSec: 0, paused: false, justResumed: false,
+  watchId: null, timer: null, saveRoute: true, weightKg: 60,
+  running: false
+};
+
+// ---------- 工具 ----------
+function $(id){ return document.getElementById(id); }
+function show(name){
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  $('screen-' + name).classList.add('active');
+  if(name === 'history') renderHistory();
+}
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+function fmtClock(sec){
+  sec = Math.floor(sec);
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  const mm = String(m).padStart(2,'0'), ss = String(s).padStart(2,'0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+function fmtPace(secPerKm){
+  if(!isFinite(secPerKm) || secPerKm <= 0 || secPerKm > 3600) return '--';
+  const m = Math.floor(secPerKm/60), s = Math.round(secPerKm%60);
+  return `${m}'${String(s).padStart(2,'0')}"`;
+}
+function haversine(lat1,lng1,lat2,lng2){
+  const R = 6371000, rad = d => d*Math.PI/180;
+  const dLat = rad(lat2-lat1), dLng = rad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function calories(weightKg, distKm){
+  return Math.round(weightKg * distKm * 1.036);
+}
+function loadRuns(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch(e){ return []; } }
+function saveRuns(runs){ localStorage.setItem(LS_KEY, JSON.stringify(runs)); }
+
+// ---------- 模式切换 ----------
+function setMode(m){
+  state.mode = m;
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('gpsOpts').style.display = m === 'gps' ? '' : 'none';
+  $('indoorOpts').style.display = m === 'indoor' ? '' : 'none';
+}
+
+// ---------- 户外跑步 ----------
+function startRun(){
+  if(!navigator.geolocation){
+    toast('当前浏览器不支持定位，请用室内模式'); return;
+  }
+  state = Object.assign(state, {
+    mode:'gps', points:[], recent:[], totalDist:0,
+    segmentStart: Date.now(), activeSec:0, paused:false, justResumed:false,
+    saveRoute: false, weightKg: parseFloat($('weight').value)||60,
+    running:true
+  });
+  show('running');
+  $('runStatus').textContent = '跑步中';
+  $('runStatus').style.color = 'var(--accent)';
+  $('pauseBtn').textContent = '暂停';
+  $('runHint').textContent = '仅记录数据，不保存轨迹';
+  startWatch();
+  state.timer = setInterval(updateRunningUI, 1000);
+}
+function startWatch(){
+  state.watchId = navigator.geolocation.watchPosition(onPosition, err=>{
+    toast('定位失败：' + (err.message || '请检查权限'));
+  }, { enableHighAccuracy:true, maximumAge:1000, timeout:15000 });
+}
+function onPosition(pos){
+  const {latitude, longitude, accuracy} = pos.coords;
+  if(accuracy > 100) return; // 忽略漂移点
+  const now = Date.now();
+  const last = state.points[state.points.length-1];
+  if(last && !state.justResumed){
+    const d = haversine(last.lat, last.lng, latitude, longitude);
+    const dt = (now - last.t)/1000;
+    const maxAllowed = Math.max(20, 10 * Math.max(dt,1)); // 最多按 10m/s 计
+    if(d <= maxAllowed) state.totalDist += d;
+  }
+  state.justResumed = false;
+  state.points.push({lat:latitude, lng:longitude, t:now});
+  state.recent.push({t:now, dist:state.totalDist});
+  while(state.recent.length>1 && now-state.recent[0].t>15000) state.recent.shift();
+  updateRunningUI();
+}
+function currentDurationSec(){
+  return state.activeSec + (state.paused ? 0 : (Date.now()-state.segmentStart)/1000);
+}
+function updateRunningUI(){
+  const dur = currentDurationSec();
+  const km = state.totalDist/1000;
+  $('runClock').textContent = fmtClock(dur);
+  $('rDist').textContent = km.toFixed(2);
+  $('rAvg').textContent = fmtPace(km>0.01 ? dur/km : NaN);
+  // 当前配速：近 15 秒窗口
+  let cur = NaN;
+  if(state.recent.length>1){
+    const f = state.recent[0], l = state.recent[state.recent.length-1];
+    const dt = (l.t-f.t)/1000, dd = (l.dist-f.dist)/1000;
+    if(dt>2 && dd>0.005) cur = dt/dd;
+  }
+  $('rCur').textContent = fmtPace(cur);
+  $('rCal').textContent = calories(state.weightKg, km);
+}
+function pauseResume(){
+  if(!state.running) return;
+  if(!state.paused){
+    state.activeSec += (Date.now()-state.segmentStart)/1000;
+    state.paused = true;
+    if(state.watchId!=null){ navigator.geolocation.clearWatch(state.watchId); state.watchId=null; }
+    $('runStatus').textContent = '已暂停';
+    $('runStatus').style.color = 'var(--muted)';
+    $('pauseBtn').textContent = '继续';
+  } else {
+    state.segmentStart = Date.now();
+    state.paused = false;
+    state.justResumed = true;
+    startWatch();
+    $('runStatus').textContent = '跑步中';
+    $('runStatus').style.color = 'var(--accent)';
+    $('pauseBtn').textContent = '暂停';
+  }
+}
+function stopRun(){
+  const dur = currentDurationSec();
+  const km = state.totalDist/1000;
+  if(km < 0.05){ toast('距离太短，未保存'); resetRun(); return; }
+  const run = {
+    id: Date.now(), type:'gps', ts: Date.now(),
+    distanceKm: round2(km), durationSec: Math.round(dur),
+    paceSec: dur/km, calories: calories(state.weightKg, km),
+    weightKg: state.weightKg,
+    points: state.saveRoute ? state.points : []
+  };
+  const runs = loadRuns(); runs.unshift(run); saveRuns(runs);
+  resetRun();
+  toast('已保存');
+  show('history');
+}
+function resetRun(){
+  if(state.watchId!=null){ navigator.geolocation.clearWatch(state.watchId); state.watchId=null; }
+  clearInterval(state.timer);
+  state.running = false; state.paused = false; state.points=[]; state.recent=[]; state.totalDist=0;
+}
+function round2(x){ return Math.round(x*100)/100; }
+
+// ---------- 室内 ----------
+function saveIndoor(){
+  const d = parseFloat($('iDist').value), min = parseFloat($('iMin').value), w = parseFloat($('iWeight').value)||60;
+  if(!d || d<=0 || !min || min<=0){ toast('请填写正确的距离和时长'); return; }
+  const durSec = min*60;
+  const run = {
+    id: Date.now(), type:'indoor', ts: Date.now(),
+    distanceKm: round2(d), durationSec: Math.round(durSec),
+    paceSec: durSec/d, calories: calories(w, d), weightKg: w, points: []
+  };
+  const runs = loadRuns(); runs.unshift(run); saveRuns(runs);
+  toast('已保存'); show('history');
+}
+
+// ---------- 历史 & 详情 ----------
+function renderHistory(){
+  const runs = loadRuns();
+  const el = $('historyList');
+  if(!runs.length){
+    el.innerHTML = '<div class="empty"><div class="big">🏃</div>还没有记录，去跑一次吧</div>';
+    return;
+  }
+  el.innerHTML = runs.map(r => `
+    <div class="run-item" onclick="viewDetail(${r.id})">
+      <div class="icon">${r.type==='indoor' ? '🏠' : '📍'}</div>
+      <div class="info">
+        <div class="date">${fmtDate(r.ts)} · ${r.type==='indoor'?'室内':'户外'}</div>
+        <div class="nums">${r.distanceKm.toFixed(2)} km <span>· ${fmtPace(r.paceSec)}</span></div>
+      </div>
+      <div class="dist">${r.distanceKm.toFixed(2)}</div>
+    </div>`).join('');
+}
+function fmtDate(ts){
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function viewDetail(id){
+  const r = loadRuns().find(x => x.id === id);
+  if(!r) return;
+  $('detailBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="stat"><div class="v">${r.distanceKm.toFixed(2)}</div><div class="k">距离 (km)</div></div>
+      <div class="stat"><div class="v">${fmtClock(r.durationSec)}</div><div class="k">时长</div></div>
+      <div class="stat"><div class="v">${fmtPace(r.paceSec)}</div><div class="k">平均配速</div></div>
+      <div class="stat"><div class="v">${r.calories}</div><div class="k">热量 (kcal)</div></div>
+    </div>
+    <div class="detail-meta">
+      ${r.type==='indoor'?'🏠 室内 / 跑步机记录':'📍 户外跑步'} · ${fmtDate(r.ts)}<br/>
+      ${r.type==='gps' ? '本应用不保存路线轨迹' : '室内模式不产生轨迹'}
+    </div>
+    <button class="btn" style="width:100%;margin-top:16px;color:var(--danger);" onclick="deleteRun(${r.id})">删除此记录</button>
+  `;
+  show('detail');
+}
+function deleteRun(id){
+  if(!confirm('确定删除这条记录？')) return;
+  saveRuns(loadRuns().filter(x => x.id !== id));
+  toast('已删除'); show('history');
+}
+
+// Service Worker（PWA 离线缓存与可安装）
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname))) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
+// 初始化
+renderHistory();
+</script>
+</body>
+</html>
