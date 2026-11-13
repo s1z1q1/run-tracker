@@ -1,4 +1,4 @@
-const CACHE = 'runlog-v3';
+const CACHE = 'runlog-v4';
 const ASSETS = ['./index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './supabase.js'];
 
 self.addEventListener('install', e => {

@@ -216,7 +216,7 @@
 <script>
 const SUPABASE_URL = 'https://fdfvheaoonapqwucpgiv.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_X4onDfWpvEynFo1wT1ZUGw_Nwe_h2u_';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let user = null;
 let runs = [];
@@ -280,7 +280,7 @@ async function doLogin(){
   const email = $('authEmail').value.trim(), password = $('authPassword').value;
   if(!email || !password){ authMsg('请填写邮箱和密码'); return; }
   authBusy = true; authMsg('');
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   authBusy = false;
   if(error) authMsg(transErr(error.message));
 }
@@ -290,13 +290,13 @@ async function doSignup(){
   if(!email || !password){ authMsg('请填写邮箱和密码'); return; }
   if(password.length < 6){ authMsg('密码至少 6 位'); return; }
   authBusy = true; authMsg('');
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({ email, password });
   authBusy = false;
   if(error){ authMsg(transErr(error.message)); return; }
   if(!data.session) authMsg('注册成功！请去邮箱点击确认链接后再登录');
 }
 async function doLogout(){
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   $('authEmail').value = ''; $('authPassword').value = '';
 }
 
@@ -310,7 +310,7 @@ function mapRun(r){
   };
 }
 async function refreshRuns(){
-  const { data, error } = await supabase.from('runs').select('*').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('runs').select('*').order('created_at', { ascending: false });
   if(error){
     console.error(error);
     runs = [];
@@ -322,7 +322,7 @@ async function refreshRuns(){
 }
 async function saveRun(run){
   if(!user){ toast('请先登录'); return false; }
-  const { error } = await supabase.from('runs').insert({
+  const { error } = await sb.from('runs').insert({
     user_id: user.id, type: run.type,
     distance_km: run.distanceKm, duration_sec: run.durationSec,
     pace_sec: round2(run.paceSec), calories: run.calories, weight_kg: run.weightKg
@@ -332,7 +332,7 @@ async function saveRun(run){
 }
 async function deleteRun(id){
   if(!confirm('确定删除这条记录？')) return;
-  const { error } = await supabase.from('runs').delete().eq('id', id);
+  const { error } = await sb.from('runs').delete().eq('id', id);
   if(error){ toast('删除失败：' + error.message); return; }
   toast('已删除');
   await refreshRuns();
@@ -523,11 +523,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localho
 }
 
 // 初始化
-supabase.auth.onAuthStateChange((_event, session) => {
+sb.auth.onAuthStateChange((_event, session) => {
   if(session){ enterApp(session.user); }
   else { user = null; show('auth'); }
 });
-supabase.auth.getSession().then(({ data }) => {
+sb.auth.getSession().then(({ data }) => {
   if(data && data.session) enterApp(data.session.user);
 });
 </script>
